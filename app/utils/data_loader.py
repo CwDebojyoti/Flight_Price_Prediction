@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from app.exception_logging.logger import logging
+from exception_logging.logger import logging
 
 class DataLoader:
     def __init__(self, file_path: str):
@@ -20,7 +20,17 @@ class DataLoader:
             logging.info(f"Loading data from {file_path}")
             data = pd.read_csv(file_path)
             logging.info(f"Data loaded successfully with shape {data.shape}")
-            return data
+            try:
+                data = data.drop(columns=['index', 'flight'])
+            except KeyError:
+                logging.warning("'flight' column not found in data, skipping drop operation.")
+            try:
+                X = data.drop('price', axis=1)
+                y = data['price']
+            except KeyError as e:
+                logging.error(f"'price' column not found in data: {e}")
+                raise
+            return X, y
         except FileNotFoundError as e:
             logging.error(f"File not found: {e}")
             raise
