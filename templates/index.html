@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Flight Price Predictor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+  <div class="container mt-5">
+    <div class="card shadow-lg p-4">
+      <h2 class="text-center mb-4">Flight Price Prediction</h2>
+      <form method="POST" action="/predict">
+
+        <!-- Airline -->
+        <div class="mb-3">
+          <label class="form-label">Airline</label>
+          <select name="airline" class="form-select" required>
+            <option>SpiceJet</option>
+            <option>AirAsia</option>
+            <option>Vistara</option>
+            <option>IndiGo</option>
+            <option>GO_FIRST</option>
+            <option>Air_India</option>
+          </select>
+        </div>
+
+        <!-- Source City -->
+        <div class="mb-3">
+          <label class="form-label">Source City</label>
+          <select name="source_city" class="form-select" required>
+            <option>Delhi</option>
+            <option>Mumbai</option>
+            <option>Bangalore</option>
+            <option>Kolkata</option>
+            <option>Hyderabad</option>
+            <option>Chennai</option>
+          </select>
+        </div>
+
+        <!-- Destination City -->
+        <div class="mb-3">
+          <label class="form-label">Destination City</label>
+          <select name="destination_city" class="form-select" required>
+            <option>Delhi</option>
+            <option>Mumbai</option>
+            <option>Bangalore</option>
+            <option>Kolkata</option>
+            <option>Hyderabad</option>
+            <option>Chennai</option>
+          </select>
+        </div>
+
+        <!-- Departure Time -->
+        <div class="mb-3">
+          <label class="form-label">Departure Time</label>
+          <select name="departure_time" class="form-select" required>
+            <option>Early_Morning</option>
+            <option>Morning</option>
+            <option>Afternoon</option>
+            <option>Evening</option>
+            <option>Night</option>
+          </select>
+        </div>
+
+        <!-- Arrival Time -->
+        <div class="mb-3">
+          <label class="form-label">Arrival Time</label>
+          <select name="arrival_time" class="form-select" required>
+            <option>Early_Morning</option>
+            <option>Morning</option>
+            <option>Afternoon</option>
+            <option>Evening</option>
+            <option>Night</option>
+          </select>
+        </div>
+
+        <!-- Stops -->
+        <div class="mb-3">
+          <label class="form-label">Number of Stops</label>
+          <select name="stops" class="form-select" required>
+            <option>zero</option>
+            <option>one</option>
+            <option>two_or_more</option>
+          </select>
+        </div>
+
+        <!-- Class -->
+        <div class="mb-3">
+          <label class="form-label">Class</label>
+          <select name="class" class="form-select" required>
+            <option>Economy</option>
+            <option>Business</option>
+          </select>
+        </div>
+
+        <!-- Duration -->
+        <div class="mb-3">
+          <label class="form-label">Duration (in hours)</label>
+          <input type="number" step="0.01" name="duration" class="form-control" required>
+        </div>
+
+        <!-- Days Left -->
+        <div class="mb-3">
+          <label class="form-label">Days Left</label>
+          <input type="number" name="days_left" class="form-control" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">Predict Price</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
