@@ -1,0 +1,11 @@
+data/
+logs/
+models/
+preprocessor/
+notebooks/
+pycache/
+__pycache__/
+static/
+templates/
+.pyc
+.env

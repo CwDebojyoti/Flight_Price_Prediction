@@ -5,6 +5,11 @@ TEST_SIZE = 0.2
 RANDOM_STATE = 42
 CROSS_VAL_FOLDS = 5
 
+PROJECT_ID = "your-gcp-project-id"
+MODEL_DIR = "models/flight_price_model"  # Folder in GCS where model is saved
+PROCESSOR_DIR = "preprocessor"  # Folder in GCS where preprocessor is saved
+MODEL_FILENAME = "model.pkl"
+
 RANDOM_SEARCH_PARAMS = {
     'XGBRegressor': {
         'n_estimators': [100, 200],
