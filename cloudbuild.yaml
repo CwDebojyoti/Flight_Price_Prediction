@@ -1,0 +1,94 @@
+steps:
+# --- Build & Push Training Image ---
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Build Training Image'
+  args: ['build', '-t', 'gcr.io/flight-price-prediction-470515/flight-price-train', '-f', 'Dockerfile.train', '.']
+
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Push Training Image'
+  args: ['push', 'gcr.io/flight-price-prediction-470515/flight-price-train']
+
+# --- Submit Vertex AI Training Job ---
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Submit Vertex AI Training Job'
+  args:
+    [
+      'ai', 'custom-jobs', 'create',
+      '--region=us-central1',
+      '--display-name=flight-price-training',
+      '--project=flight-price-prediction-470515',
+      '--worker-pool-spec=replica-count=1,machine-type=n1-standard-4,container-image-uri=gcr.io/flight-price-prediction-470515/flight-price-train'
+    ]
+
+# --- Upload Model to Vertex AI ---
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Upload Model'
+  args:
+    [
+      'ai', 'models', 'upload',
+      '--project=flight-price-prediction-470515',
+      '--region=us-central1',
+      '--display-name=flight-price-model',
+      '--artifact-uri=gs://YOUR_BUCKET/MODEL_ARTIFACT_PATH/',
+      '--container-image-uri=us-docker.pkg.dev/vertex-ai/prediction/sklearn-cpu.1-0:latest'
+    ]
+
+# --- Fetch Model ID ---
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Fetch Model ID'
+  entrypoint: 'bash'
+  args:
+    ['-c', 'gcloud ai models list --region=us-central1 --project=flight-price-prediction-470515 --format="get(MODEL_ID)" --sort-by="createTime" --limit=1 > /workspace/model_id.txt']
+
+# --- Create Endpoint ---
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Create Endpoint'
+  entrypoint: 'bash'
+  args:
+    ['-c', 'gcloud ai endpoints create --display-name=flight-price-endpoint --region=us-central1 --project=flight-price-prediction-470515 --format="get(name)" > /workspace/endpoint_id.txt']
+
+# --- Deploy Model to Endpoint ---
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Deploy Model'
+  entrypoint: 'bash'
+  args:
+    ['-c', 'gcloud ai endpoints deploy-model $(cat /workspace/endpoint_id.txt) --model=$(cat /workspace/model_id.txt) --region=us-central1 --machine-type=n1-standard-4 --traffic-split=0=100']
+
+# --- Save Endpoint ID to Secret Manager ---
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Save Endpoint ID'
+  entrypoint: 'bash'
+  args:
+    ['-c', 'gcloud secrets describe flight-price-endpoint-id --project=flight-price-prediction-470515 || gcloud secrets create flight-price-endpoint-id --replication-policy=automatic']
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Add Endpoint ID Version'
+  args:
+    [
+      'secrets', 'versions', 'add', 'flight-price-endpoint-id',
+      '--data-file=/workspace/endpoint_id.txt',
+      '--project=flight-price-prediction-470515'
+    ]
+
+# --- Build & Push Flask App Image ---
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Build Flask App Image'
+  args: ['build', '-t', 'gcr.io/flight-price-prediction-470515/flight-price-serve', '-f', 'Dockerfile.serve', '.']
+
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Push Flask App Image'
+  args: ['push', 'gcr.io/flight-price-prediction-470515/flight-price-serve']
+
+# --- Deploy Flask App to Cloud Run ---
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Deploy Flask App'
+  args:
+    [
+      'run', 'deploy', 'flight-price-ui',
+      '--image=gcr.io/flight-price-prediction-470515/flight-price-serve',
+      '--platform=managed',
+      '--region=us-central1',
+      '--allow-unauthenticated'
+    ]
+
+options:
+  logging: CLOUD_LOGGING_ONLY
