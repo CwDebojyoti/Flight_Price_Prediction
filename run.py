@@ -59,7 +59,8 @@ def predict():
         
         instance = transformed_input.tolist()
 
-        print("Transformed instance:", instance)
+        print("input_df:", input_df)
+        print("Instance for prediction:", instance)
 
         # Call Vertex AI endpoint
         prediction_response = endpoint.predict(instances=[instance])
