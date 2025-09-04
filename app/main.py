@@ -31,28 +31,27 @@ def main():
     tuned_model = best_model.fit(X_train_transformed, y_train).best_estimator_
 
     # 4. Build full pipeline (preprocessor + model)
-    """
     pipeline = Pipeline(steps=[
         ("preprocessor", preprocessor),
         ("model", tuned_model)
     ])
     pipeline.fit(X, y)
-    """
+    
 
     # 5. Save model locally
     os.makedirs("artifacts", exist_ok=True)
     local_model_path = os.path.join("artifacts", MODEL_FILENAME)
-    local_preprocessor_path = os.path.join("artifacts", PROCESSOR_FILENAME)
-    joblib.dump(tuned_model, local_model_path)
-    joblib.dump(preprocessor, local_preprocessor_path)
+    #local_preprocessor_path = os.path.join("artifacts", PROCESSOR_FILENAME)
+    joblib.dump(pipeline, local_model_path)
+    #joblib.dump(preprocessor, local_preprocessor_path)
     print(f"✅ Model saved locally at {local_model_path}")
-    print(f"✅ Preprocessor saved at {local_preprocessor_path}")
+    #print(f"✅ Preprocessor saved at {local_preprocessor_path}")
 
 
     # 6. Upload to GCS
     gcs_model_path = f"{MODEL_DIR}/{MODEL_FILENAME}"
     model_tuner.upload_model_to_gcs(GCS_BUCKET_NAME, local_model_path, gcs_model_path)
-    model_tuner.upload_model_to_gcs(GCS_BUCKET_NAME, local_preprocessor_path, f"{PROCESSOR_DIR}/{PROCESSOR_FILENAME}")
+    #model_tuner.upload_model_to_gcs(GCS_BUCKET_NAME, local_preprocessor_path, f"{PROCESSOR_DIR}/{PROCESSOR_FILENAME}")
 
 
 

@@ -23,5 +23,10 @@ RANDOM_SEARCH_PARAMS = {
         'learning_rate': [0.01, 0.1, 0.2],
         'max_depth': [3, 5, 7],
         'subsample': [0.8, 1.0]
-    }
+    },
+    'DecisionTree': {
+        'max_depth': [None, 10, 20, 30],
+        'min_samples_split': [2, 5, 10],
+        'min_samples_leaf': [1, 2, 4]
+    },
 }

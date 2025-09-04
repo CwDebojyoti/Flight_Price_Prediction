@@ -5,7 +5,8 @@ from utils.feature_engineering import FeatureEngineer
 from config import RANDOM_STATE, TEST_SIZE, CROSS_VAL_FOLDS, RANDOM_SEARCH_PARAMS
 
 from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV
-from xgboost import XGBRegressor
+#from xgboost import XGBRegressor
+from sklearn.tree import DecisionTreeRegressor
 
 from google.cloud import storage
 
@@ -21,11 +22,12 @@ class ModelTrainer:
             X_train, X_test, y_train, y_test = train_test_split(self.X, self.y, test_size=TEST_SIZE, random_state=RANDOM_STATE)
             logging.info("Data split into training and testing sets.")
 
-            model = XGBRegressor()
+            #model = XGBRegressor()
+            model = DecisionTreeRegressor()
 
-            logging.info("Initialized XGBRegressor model trainer with RandomSearch tuner.")
+            logging.info("Initialized DecisionTree model trainer with RandomSearch tuner.")
             randomsearch_model_tune = RandomizedSearchCV(estimator=model,
-                                                          param_distributions=RANDOM_SEARCH_PARAMS['XGBRegressor'],
+                                                          param_distributions=RANDOM_SEARCH_PARAMS['DecisionTree'],
                                                           n_iter=100,
                                                           cv=CROSS_VAL_FOLDS,
                                                           scoring='neg_mean_squared_error',
