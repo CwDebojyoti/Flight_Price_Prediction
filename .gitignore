@@ -5,5 +5,5 @@ models/
 preprocessor/
 pycache/
 __pycache__/
-.pyc
+*.pyc
 .env

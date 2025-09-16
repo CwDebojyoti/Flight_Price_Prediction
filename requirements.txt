@@ -1,10 +1,10 @@
 pandas
 numpy
-scikit-learn==1.5
+scikit-learn==1.5.2
 matplotlib
 flask
 gunicorn
-xgboost==2.1
+#xgboost==2.1
 google-cloud-storage
 fsspec
 gcsfs
