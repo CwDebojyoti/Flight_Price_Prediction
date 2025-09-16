@@ -14,7 +14,7 @@ def get_endpoint_id():
     response = client.access_secret_version(request={"name": name})
     return response.payload.data.decode("utf-8")
 
-"""
+
 def load_preprocessor_from_gcs(bucket_name, blob_path):
     #Download preprocessor from GCS and load it
     client = storage.Client()
@@ -26,17 +26,17 @@ def load_preprocessor_from_gcs(bucket_name, blob_path):
         preprocessor = joblib.load(temp_file.name)
 
     return preprocessor
-"""
+
 
 # Initialize Vertex AI
 aiplatform.init(project=PROJECT_ID, location=REGION)
 ENDPOINT_ID = get_endpoint_id()
 endpoint = aiplatform.Endpoint(endpoint_name=ENDPOINT_ID)
 
-"""
+
 PREPROCESSOR_BLOB_PATH = f"{PROCESSOR_DIR}/{PROCESSOR_FILENAME}"
 preprocessor = load_preprocessor_from_gcs(GCS_BUCKET_NAME, PREPROCESSOR_BLOB_PATH)
-"""
+
 
 app = Flask(__name__)
 
@@ -57,8 +57,14 @@ def predict():
         # Convert to DataFrame, then dict for Vertex AI request
         input_df = pd.DataFrame([form_data])
 
-        # Send raw input to Vertex AI
-        prediction_response = endpoint.predict(instances=[form_data])
+        transformed_input = preprocessor.transform(input_df)
+        
+        instance = transformed_input.tolist()
+
+        print("Transformed instance:", instance)
+
+        # Call Vertex AI endpoint
+        prediction_response = endpoint.predict(instances=instance)
         prediction = prediction_response.predictions[0]
 
         return f"<h2 style='text-align:center;margin-top:50px;'>Predicted Flight Price: ₹{round(prediction, 2)}</h2>"

@@ -10,8 +10,8 @@ CROSS_VAL_FOLDS = 5
 PROJECT_ID = "your-gcp-project-id"
 MODEL_DIR = "models/flight_price_model"  # Folder in GCS where model is saved
 PROCESSOR_DIR = "preprocessor"  # Folder in GCS where preprocessor is saved
-MODEL_FILENAME = "model.pkl"
-PROCESSOR_FILENAME = "preprocessor.pkl"
+MODEL_FILENAME = "model.joblib"
+PROCESSOR_FILENAME = "preprocessor.joblib"
 
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "flight-price-prediction-470515")
 REGION = "us-central1"

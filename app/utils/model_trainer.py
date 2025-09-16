@@ -7,6 +7,7 @@ from config import RANDOM_STATE, TEST_SIZE, CROSS_VAL_FOLDS, RANDOM_SEARCH_PARAM
 from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV
 #from xgboost import XGBRegressor
 from sklearn.tree import DecisionTreeRegressor
+from sklearn.pipeline import make_pipeline
 
 from google.cloud import storage
 
@@ -25,6 +26,10 @@ class ModelTrainer:
             #model = XGBRegressor()
             model = DecisionTreeRegressor()
 
+            pipeline = make_pipeline(model)
+            logging.info("Pipeline created with DecisionTreeRegressor.")
+
+            """
             logging.info("Initialized DecisionTree model trainer with RandomSearch tuner.")
             randomsearch_model_tune = RandomizedSearchCV(estimator=model,
                                                           param_distributions=RANDOM_SEARCH_PARAMS['DecisionTree'],
@@ -38,9 +43,9 @@ class ModelTrainer:
             logging.info("Configured RandomizedSearchCV for hyperparameter tuning.")
 
             logging.info("Model trainer setup complete. Ready to fit the model.")
+            """
 
-            return X_train, X_test, y_train, y_test, randomsearch_model_tune
-
+            return X_train, X_test, y_train, y_test, pipeline
 
         except Exception as e:
             logging.error(f"An error occurred during model training: {e}")
