@@ -68,7 +68,11 @@ def predict():
         prediction_response = endpoint.predict(instances=instance)
         prediction = prediction_response.predictions[0]
 
-        return f"<h2 style='text-align:center;margin-top:50px;'>Predicted Flight Price: ₹{round(prediction, 2)}</h2>"
+        return render_template(
+            "index.html",
+            predicted_price=round(prediction, 2)
+        )
+
 
     except Exception as e:
         return f"<h3 style='color:red;'>Error: {e}</h3>"
