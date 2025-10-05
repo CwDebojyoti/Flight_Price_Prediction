@@ -1,16 +1,12 @@
-substitutions:
-  # Use commit SHA if available, else fallback to timestamp
-  _TAG: '${_COMMIT_SHA:-$(date +%Y%m%d%H%M%S)}'
-
 steps:
 # --- Build & Push Training Image ---
 - name: 'gcr.io/cloud-builders/docker'
   id: 'Build Training Image'
-  args: ['build', '-t', 'gcr.io/flight-price-prediction-470515/flight-price-train:${_TAG}', '-f', 'Dockerfile.train', '.']
+  args: ['build', '-t', 'gcr.io/flight-price-prediction-470515/flight-price-train', '-f', 'Dockerfile.train', '.']
 
 - name: 'gcr.io/cloud-builders/docker'
   id: 'Push Training Image'
-  args: ['push', 'gcr.io/flight-price-prediction-470515/flight-price-train:${_TAG}']
+  args: ['push', 'gcr.io/flight-price-prediction-470515/flight-price-train']
 
 # --- Submit Vertex AI Training Job ---
 - name: 'gcr.io/cloud-builders/gcloud'
@@ -21,7 +17,7 @@ steps:
       '--region=us-central1',
       '--display-name=flight-price-training',
       '--project=flight-price-prediction-470515',
-      '--worker-pool-spec=replica-count=1,machine-type=n1-standard-4,container-image-uri=gcr.io/flight-price-prediction-470515/flight-price-train:${_TAG}'
+      '--worker-pool-spec=replica-count=1,machine-type=n1-standard-4,container-image-uri=gcr.io/flight-price-prediction-470515/flight-price-train'
     ]
 
 # --- Wait for 5 minutes before uploading model ---
@@ -99,11 +95,11 @@ steps:
 # --- Build & Push Flask App Image ---
 - name: 'gcr.io/cloud-builders/docker'
   id: 'Build Flask App Image'
-  args: ['build', '-t', 'gcr.io/flight-price-prediction-470515/flight-price-serve:${_TAG}', '-f', 'Dockerfile.serve', '.']
+  args: ['build', '-t', 'gcr.io/flight-price-prediction-470515/flight-price-serve', '-f', 'Dockerfile.serve', '.']
 
 - name: 'gcr.io/cloud-builders/docker'
   id: 'Push Flask App Image'
-  args: ['push', 'gcr.io/flight-price-prediction-470515/flight-price-serve:${_TAG}']
+  args: ['push', 'gcr.io/flight-price-prediction-470515/flight-price-serve']
 
 # --- Deploy Flask App to Cloud Run ---
 - name: 'gcr.io/cloud-builders/gcloud'
@@ -111,7 +107,7 @@ steps:
   args:
     [
       'run', 'deploy', 'flight-price-ui',
-      '--image=gcr.io/flight-price-prediction-470515/flight-price-serve:${_TAG}',
+      '--image=gcr.io/flight-price-prediction-470515/flight-price-serve',
       '--platform=managed',
       '--region=us-central1',
       '--allow-unauthenticated'
