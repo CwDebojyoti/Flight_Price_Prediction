@@ -46,4 +46,7 @@ To Check how many Pub/Sub notifications are configured for the GCS bucket using:
 'gsutil notification list gs://flight_price_data'
 
 To Delete any notification:
-'gsutil notification delete projects/_/buckets/flight_price_data/notificationConfigs/1'
+'gsutil notification delete projects/_/buckets/flight_price_data/notificationConfigs/2'
+
+Secret manager:
+projects/373714928690/locations/us-central1/endpoints/8660803613968302080 (flight-price-endpoint-id)

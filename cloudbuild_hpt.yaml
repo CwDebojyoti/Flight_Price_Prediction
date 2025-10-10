@@ -1,0 +1,252 @@
+steps:
+# --- Build & Push Training Image ---
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Build Training Image'
+  args: ['build', '-t', 'gcr.io/flight-price-prediction-470515/flight-price-train', '-f', 'Dockerfile.train', '.']
+
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Push Training Image'
+  args: ['push', 'gcr.io/flight-price-prediction-470515/flight-price-train']
+
+# --- Submit Vertex AI Hyperparameter Tuning Job ---
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Submit Vertex AI HPT Job'
+  entrypoint: bash
+  args:
+  - -c
+  - |
+    JOB_ID=$(gcloud ai hp-tuning-jobs create \
+      --region=us-central1 \
+      --display-name=flight-price-hpt \
+      --project=flight-price-prediction-470515 \
+      --config=vertex_hpt.yaml \
+      --format='value(name)')
+    echo "$$JOB_ID" > /workspace/hpt_job_id.txt
+    echo "Submitted HPT job: $${JOB_ID}"
+
+# --- Wait for HPT Job to complete ---
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Wait for HPT Completion'
+  entrypoint: 'bash'
+  args:
+    - -c
+    - |
+      JOB_ID=$(cat /workspace/hpt_job_id.txt)
+      echo "Waiting for job $${JOB_ID} to finish..."
+      
+      while true; do
+        STATUS=$(gcloud ai hp-tuning-jobs describe $${JOB_ID} \
+          --region=us-central1 \
+          --project=flight-price-prediction-470515 \
+          --format='value(state)')
+        
+        echo "Current status: $${STATUS}"
+        
+        if [ "$${STATUS}" = "JOB_STATE_SUCCEEDED" ]; then
+          echo "HPT job completed successfully!"
+          break
+        elif [ "$${STATUS}" = "JOB_STATE_FAILED" ] || [ "$${STATUS}" = "JOB_STATE_CANCELLED" ]; then
+          echo "HPT job failed or was cancelled with status: $${STATUS}"
+          exit 1
+        fi
+        
+        # Wait 2 minutes before checking again
+        sleep 120
+      done
+      
+      # Wait an additional 30 seconds for trial data to fully propagate
+      echo "Waiting for trial data to propagate..."
+      sleep 30
+
+# --- Fetch Best Trial's Artifact URI ---
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Get Best Trial Artifact'
+  entrypoint: 'python3'
+  args:
+    - -c
+    - |
+      import json
+      import sys
+      
+      # Read job ID
+      with open('/workspace/hpt_job_id.txt', 'r') as f:
+          job_id = f.read().strip()
+      
+      print(f"Getting best trial for job: {job_id}")
+      
+      # Read the HPT job JSON (already retrieved by gcloud in previous step)
+      import subprocess
+      result = subprocess.run([
+          'gcloud', 'ai', 'hp-tuning-jobs', 'describe', job_id,
+          '--region=us-central1',
+          '--project=flight-price-prediction-470515',
+          '--format=json'
+      ], capture_output=True, text=True)
+      
+      if result.returncode != 0:
+          print(f"Error getting HPT job: {result.stderr}")
+          sys.exit(1)
+      
+      hpt_job = json.loads(result.stdout)
+      
+      # Get trials
+      trials = hpt_job.get('trials', [])
+      print(f"Number of trials found: {len(trials)}")
+      
+      if not trials:
+          print("Error: No trials found in the hyperparameter tuning job")
+          sys.exit(1)
+      
+      # Filter successful trials with valid metrics
+      successful_trials = [
+          t for t in trials 
+          if t.get('state') == 'SUCCEEDED' and t.get('finalMeasurement')
+      ]
+      
+      if not successful_trials:
+          print("Error: No successful trials with valid metrics found")
+          sys.exit(1)
+      
+      # Find best trial (minimize RMSE)
+      best_trial = min(
+          successful_trials,
+          key=lambda t: t['finalMeasurement']['metrics'][0]['value']
+      )
+      
+      trial_id = best_trial['id']
+      best_rmse = best_trial['finalMeasurement']['metrics'][0]['value']
+      
+      print(f"Best Trial ID: {trial_id}")
+      print(f"Best RMSE: {best_rmse}")
+      print(f"Best Trial Parameters: {best_trial.get('parameters', [])}")
+      
+      # Save results
+      with open('/workspace/best_trial_id.txt', 'w') as f:
+          f.write(trial_id)
+      
+      with open('/workspace/best_rmse.txt', 'w') as f:
+          f.write(str(best_rmse))
+      
+      # Construct artifact path
+      model_uri = f"gs://flight_price_data/models/trial_{trial_id}/"
+      
+      with open('/workspace/best_model_uri.txt', 'w') as f:
+          f.write(model_uri)
+      
+      print(f"Best model URI: {model_uri}")
+
+# --- Upload Best Model to Vertex AI ---
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Upload Best Model'
+  entrypoint: bash
+  args:
+    - -c
+    - |
+      ARTIFACT_URI=$(cat /workspace/best_model_uri.txt)
+      BEST_RMSE=$(cat /workspace/best_rmse.txt)
+      echo "Uploading model from: $${ARTIFACT_URI}"
+      echo "Model RMSE: $${BEST_RMSE}"
+      
+      # Verify the model artifacts exist
+      echo "Checking if model artifacts exist..."
+      if gsutil ls "$${ARTIFACT_URI}model.joblib" 2>/dev/null; then
+        echo "Model artifacts found!"
+      else
+        echo "Error: Model artifacts not found at $${ARTIFACT_URI}"
+        echo "Listing contents of models directory:"
+        gsutil ls "gs://flight_price_data/models/" || echo "Could not list models directory"
+        exit 1
+      fi
+      
+      gcloud ai models upload \
+        --project=flight-price-prediction-470515 \
+        --region=us-central1 \
+        --display-name=flight-price-model \
+        --artifact-uri="$${ARTIFACT_URI}" \
+        --container-image-uri=us-docker.pkg.dev/vertex-ai/prediction/sklearn-cpu.1-5:latest
+
+# --- Create Endpoint ---
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Create Endpoint'
+  entrypoint: 'bash'
+  args:
+    - -c
+    - |
+      ENDPOINT_OUTPUT=$(gcloud ai endpoints create \
+        --display-name=flight-price-endpoint \
+        --region=us-central1 \
+        --project=flight-price-prediction-470515 \
+        --format="value(name)")
+      echo "$${ENDPOINT_OUTPUT}" > /workspace/endpoint_id.txt
+      echo "Created endpoint: $${ENDPOINT_OUTPUT}"
+
+# --- Deploy Best Model to Endpoint ---
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Deploy Best Model Endpoint'
+  entrypoint: bash
+  args: 
+    - -c
+    - |
+      ENDPOINT_ID=$(cat /workspace/endpoint_id.txt)
+      MODEL_ID=$(gcloud ai models list \
+        --region=us-central1 \
+        --project=flight-price-prediction-470515 \
+        --format='value(name)' \
+        --filter="displayName=flight-price-model" \
+        --sort-by=createTime \
+        --limit=1)
+      
+      echo "Deploying model $${MODEL_ID} to endpoint $${ENDPOINT_ID}"
+      
+      gcloud ai endpoints deploy-model $${ENDPOINT_ID} \
+        --region=us-central1 \
+        --project=flight-price-prediction-470515 \
+        --model=$${MODEL_ID} \
+        --display-name=flight-price-prediction-model \
+        --traffic-split=0=100 \
+        --machine-type=n1-standard-4 \
+        --service-account=vertexai-sa@flight-price-prediction-470515.iam.gserviceaccount.com
+
+# --- Save Endpoint ID to Secret Manager ---
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Save Endpoint ID'
+  entrypoint: 'bash'
+  args:
+    - -c
+    - |
+      gcloud secrets describe flight-price-endpoint-id --project=flight-price-prediction-470515 || \
+      gcloud secrets create flight-price-endpoint-id --replication-policy=automatic --project=flight-price-prediction-470515
+
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Add Endpoint ID Version'
+  args:
+    [
+      'secrets', 'versions', 'add', 'flight-price-endpoint-id',
+      '--data-file=/workspace/endpoint_id.txt',
+      '--project=flight-price-prediction-470515'
+    ]
+
+# --- Build & Push Flask App Image ---
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Build Flask App Image'
+  args: ['build', '-t', 'gcr.io/flight-price-prediction-470515/flight-price-serve', '-f', 'Dockerfile.serve', '.']
+
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Push Flask App Image'
+  args: ['push', 'gcr.io/flight-price-prediction-470515/flight-price-serve']
+
+# --- Deploy Flask App to Cloud Run ---
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Deploy Flask App'
+  args:
+    [
+      'run', 'deploy', 'flight-price-ui',
+      '--image=gcr.io/flight-price-prediction-470515/flight-price-serve',
+      '--platform=managed',
+      '--region=us-central1',
+      '--allow-unauthenticated',
+      '--project=flight-price-prediction-470515'
+    ]
+
+options:
+  logging: CLOUD_LOGGING_ONLY

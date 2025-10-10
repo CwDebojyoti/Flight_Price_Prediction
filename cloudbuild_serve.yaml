@@ -1,0 +1,25 @@
+# --- Build & Push Flask App Image ---
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Build Flask App Image'
+  args: ['build', '-t', 'gcr.io/flight-price-prediction-470515/flight-price-serve', '-f', 'Dockerfile.serve', '.']
+
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Push Flask App Image'
+  args: ['push', 'gcr.io/flight-price-prediction-470515/flight-price-serve']
+
+# --- Deploy Flask App to Cloud Run ---
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Deploy Flask App'
+  args:
+    [
+      'run', 'deploy', 'flight-price-ui',
+      '--image=gcr.io/flight-price-prediction-470515/flight-price-serve',
+      '--platform=managed',
+      '--region=us-central1',
+      '--allow-unauthenticated',
+      '--project=flight-price-prediction-470515'
+    ]
+
+options:
+  logging: CLOUD_LOGGING_ONLY

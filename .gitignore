@@ -7,3 +7,4 @@ pycache/
 __pycache__/
 *.pyc
 .env
+processed_batch_data/

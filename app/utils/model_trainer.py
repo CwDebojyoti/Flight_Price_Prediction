@@ -8,6 +8,9 @@ from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSe
 #from xgboost import XGBRegressor
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.pipeline import make_pipeline
+from sklearn.metrics import mean_squared_error
+
+import numpy as np
 
 from google.cloud import storage
 
@@ -17,33 +20,23 @@ class ModelTrainer:
         self.X = X
         self.y = y
 
-    def train_model(self):
+    def train_model(self, max_depth=None, min_samples_split=2, min_samples_leaf=1):
         try:
             logging.info("Starting model training process.")
             X_train, X_test, y_train, y_test = train_test_split(self.X, self.y, test_size=TEST_SIZE, random_state=RANDOM_STATE)
             logging.info("Data split into training and testing sets.")
 
             #model = XGBRegressor()
-            model = DecisionTreeRegressor()
+            # Use hyperparameters if provided
+            model = DecisionTreeRegressor(
+                max_depth=max_depth,
+                min_samples_split=min_samples_split,
+                min_samples_leaf=min_samples_leaf,
+                random_state=RANDOM_STATE
+            )
 
             pipeline = make_pipeline(model)
             logging.info("Pipeline created with DecisionTreeRegressor.")
-
-            """
-            logging.info("Initialized DecisionTree model trainer with RandomSearch tuner.")
-            randomsearch_model_tune = RandomizedSearchCV(estimator=model,
-                                                          param_distributions=RANDOM_SEARCH_PARAMS['DecisionTree'],
-                                                          n_iter=100,
-                                                          cv=CROSS_VAL_FOLDS,
-                                                          scoring='neg_mean_squared_error',
-                                                          verbose=2,
-                                                          random_state=RANDOM_STATE,
-                                                          n_jobs=-1)
-            
-            logging.info("Configured RandomizedSearchCV for hyperparameter tuning.")
-
-            logging.info("Model trainer setup complete. Ready to fit the model.")
-            """
 
             return X_train, X_test, y_train, y_test, pipeline
 
@@ -51,6 +44,13 @@ class ModelTrainer:
             logging.error(f"An error occurred during model training: {e}")
             raise
 
+    def evaluate_model(self, pipeline, X_test, y_test):
+        """Evaluate model and return RMSE"""
+        y_pred = pipeline.predict(X_test)
+        rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+        return rmse
+    
+    
     def upload_model_to_gcs(self, bucket_name, source_file, destination_blob):
         try:
             logging.info(f"Uploading model to GCS bucket: {bucket_name}, from {source_file} to {destination_blob}")

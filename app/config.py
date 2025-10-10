@@ -8,7 +8,7 @@ RANDOM_STATE = 42
 CROSS_VAL_FOLDS = 5
 
 PROJECT_ID = "your-gcp-project-id"
-MODEL_DIR = "models/flight_price_model"  # Folder in GCS where model is saved
+MODEL_DIR = "models"  # Base folder in GCS where models are saved (trial subdirs will be created)
 PROCESSOR_DIR = "preprocessor"  # Folder in GCS where preprocessor is saved
 MODEL_FILENAME = "model.joblib"
 PROCESSOR_FILENAME = "preprocessor.joblib"

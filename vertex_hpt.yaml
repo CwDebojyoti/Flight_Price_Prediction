@@ -1,0 +1,29 @@
+studySpec:
+  metrics:
+    - metricId: rmse
+      goal: MINIMIZE
+  parameters:
+    - parameterId: max_depth
+      integerValueSpec:
+        minValue: 10
+        maxValue: 30
+    - parameterId: min_samples_split
+      integerValueSpec:
+        minValue: 2
+        maxValue: 10
+    - parameterId: min_samples_leaf
+      integerValueSpec:
+        minValue: 1
+        maxValue: 5
+
+trialJobSpec:
+  workerPoolSpecs:
+    - machineSpec:
+        machineType: n1-standard-4
+      replicaCount: 1
+      containerSpec:
+        imageUri: gcr.io/flight-price-prediction-470515/flight-price-train
+        command: ["python3", "main.py"]
+
+maxTrialCount: 6
+parallelTrialCount: 3

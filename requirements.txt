@@ -10,3 +10,4 @@ fsspec
 gcsfs
 google-cloud-aiplatform
 google-cloud-secret-manager
+cloudml-hypertune
