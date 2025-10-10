@@ -35,10 +35,13 @@ First train a new model by using custom Docker Container image. Then import the 
 
 Deployment using CloudBuild and establish CI/CD:
 
-1. To Deploy the Training and Serving image and to build CI/CD, CloudBuild service has been used. Job sequence is defined in cloudbuild.yaml file. To trigger deployment using cloudbuild.yaml file the following command has been used:
-'gcloud builds submit --config cloudbuild.yaml --project=flight-price-prediction-470515'
+1. To Deploy the Training image and to build CI/CD, CloudBuild service has been used. Job sequence is defined in cloudbuild_hpt_train.yaml file. To trigger deployment using cloudbuild_hpt_train.yaml file the following command has been used:
+'gcloud builds submit --config cloudbuild_hpt_train.yaml --project=flight-price-prediction-470515'
 
-2. Once the build is successfull, it is time to build the trigger for redeployment for change in code and data. In this case push in 'git repo' branch has used as trigger for code change and 'pub/sub' notification has been used for triggering rebuild on change in data. To create the notification on Bucket the following command has been used:
+2. To Deploy the Serving image (Flask app) and to build CI/CD, CloudBuild service has been used. Job sequence is defined in cloudbuild_hpt_train.yaml file. To trigger deployment using cloudbuild_hpt_train.yaml file the following command has been used:
+'gcloud builds submit --config cloudbuild_serve.yaml --project=flight-price-prediction-470515'
+
+3. Once the build is successfull, it is time to build the trigger for redeployment for change in code and data. In this case push in 'git repo' branch has used as trigger for code change and 'pub/sub' notification has been used for triggering rebuild on change in data. To create the notification on Bucket the following command has been used:
 'gsutil notification create -t gcs-file-changes -f json -p data/ gs://flight_price_data'
 
 
